@@ -62,6 +62,55 @@ curl -X POST https://your-worker.workers.dev/api/locations \
   -d '{"locations":[{"type":"Feature","geometry":{"type":"Point","coordinates":[139.7,35.6]},"properties":{"timestamp":"2026-02-01T10:00:00Z","device_id":"iphone"}}]}'
 ```
 
+#### リクエストスキーマ
+
+Overland iOS が送信するペイロード形式:
+
+```typescript
+type RequestBody = {
+  locations: Feature[]
+  current?: unknown
+  trip?: unknown
+}
+
+type Feature = {
+  type: "Feature"
+  geometry: {
+    type: "Point"
+    coordinates: [number, number]  // [longitude, latitude] 経度, 緯度
+  }
+  properties: {
+    timestamp: string           // 必須 (ISO 8601)
+    device_id?: string
+    altitude?: number
+    speed?: number
+    horizontal_accuracy?: number
+    vertical_accuracy?: number
+    speed_accuracy?: number
+    course?: number
+    battery_level?: number
+    battery_state?: string
+    motion?: string[]
+    wifi?: string
+    unique_id?: string
+  }
+}
+```
+
+#### レスポンススキーマ
+
+```typescript
+// 成功
+type SuccessResponse = { result: "ok" }
+
+// エラー
+type ErrorResponse = {
+  result: "error"
+  error: "invalid_json" | "validation_failed" | "database_error"
+  details?: Array<{ path: string; message: string }>
+}
+```
+
 ### GET /api/locations
 
 保存データの取得。
@@ -83,6 +132,31 @@ curl "https://your-worker.workers.dev/api/locations?date=2026-02-01" \
 # JSONL (DuckDB互換)
 curl "https://your-worker.workers.dev/api/locations?date=2026-02-01&format=jsonl" \
   -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### レスポンススキーマ
+
+`format` パラメータに応じて異なる形式を返す:
+
+```typescript
+// format=geojson (デフォルト)
+type GeoJSONResponse = {
+  type: "FeatureCollection"
+  features: Feature[]
+}
+
+// format=json
+type JSONResponse = Array<{
+  id: number
+  device_id: string
+  timestamp: string
+  geojson: Feature
+}>
+
+// format=jsonl
+// NDJSON形式（1行1Feature）
+// {"type":"Feature","geometry":{...},"properties":{...}}
+// {"type":"Feature","geometry":{...},"properties":{...}}
 ```
 
 ## Viewer
