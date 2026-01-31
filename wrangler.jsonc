@@ -1,0 +1,16 @@
+{
+  "name": "blued-location",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-01",
+  "assets": {
+    "directory": "./viewer"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blued-location-db",
+      "database_id": "TODO_REPLACE_WITH_ACTUAL_ID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>blued-location Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #controls {
+      padding: 12px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    #controls input, #controls button {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    #controls input[type="password"] {
+      width: 200px;
+    }
+    #controls button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #controls button:hover {
+      background: #0055aa;
+    }
+    #controls button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+    #status {
+      font-size: 12px;
+      color: #666;
+    }
+    #status.error {
+      color: #cc0000;
+    }
+    #map {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <input type="password" id="token" placeholder="API Token">
+    <input type="date" id="date">
+    <button id="loadBtn" onclick="loadLocations()">Load</button>
+    <span id="status"></span>
+  </div>
+  <div id="map"></div>
+
+  <script>
+    const STORAGE_KEY = 'blued-location-token';
+    let map;
+    let currentLayer = null;
+
+    function init() {
+      // Initialize map centered on Tokyo
+      map = L.map('map').setView([35.6762, 139.6503], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Get parameters from hash (#token=xxx&date=xxx) or query string (?token=xxx)
+      // Hash is preferred as it's not sent to server
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const queryParams = new URLSearchParams(window.location.search);
+
+      const urlToken = hashParams.get('token') || queryParams.get('token');
+      const urlDate = hashParams.get('date') || queryParams.get('date');
+
+      // Token priority: URL param > localStorage
+      const token = urlToken || localStorage.getItem(STORAGE_KEY);
+      if (token) {
+        document.getElementById('token').value = token;
+        if (urlToken) {
+          localStorage.setItem(STORAGE_KEY, urlToken);
+        }
+      }
+
+      // Date priority: URL param > today
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('date').value = urlDate || today;
+
+      // Auto-load if token and date are set via URL
+      if (urlToken && urlDate) {
+        loadLocations();
+      }
+    }
+
+    function setStatus(message, isError = false) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = isError ? 'error' : '';
+    }
+
+    async function loadLocations() {
+      const tokenInput = document.getElementById('token');
+      const dateInput = document.getElementById('date');
+      const loadBtn = document.getElementById('loadBtn');
+
+      const token = tokenInput.value.trim();
+      const date = dateInput.value;
+
+      if (!token) {
+        setStatus('API Tokenを入力してください', true);
+        tokenInput.focus();
+        return;
+      }
+
+      if (!date) {
+        setStatus('日付を選択してください', true);
+        dateInput.focus();
+        return;
+      }
+
+      // Save token
+      localStorage.setItem(STORAGE_KEY, token);
+
+      loadBtn.disabled = true;
+      setStatus('Loading...');
+
+      try {
+        const response = await fetch(`/api/locations?date=${date}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            setStatus('認証エラー: トークンを確認してください', true);
+            localStorage.removeItem(STORAGE_KEY);
+            tokenInput.value = '';
+            tokenInput.focus();
+            return;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const geojson = await response.json();
+
+        // Remove previous layer
+        if (currentLayer) {
+          map.removeLayer(currentLayer);
+        }
+
+        if (geojson.features.length === 0) {
+          setStatus(`${date} のデータはありません`);
+          return;
+        }
+
+        // Add GeoJSON layer
+        currentLayer = L.geoJSON(geojson, {
+          pointToLayer: (feature, latlng) => {
+            return L.circleMarker(latlng, {
+              radius: 6,
+              fillColor: '#0066cc',
+              color: '#003366',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.7
+            });
+          },
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties;
+            const time = new Date(props.timestamp).toLocaleTimeString('ja-JP');
+            const coords = feature.geometry.coordinates;
+
+            let popup = `<b>${time}</b><br>`;
+            popup += `座標: ${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}<br>`;
+
+            if (props.speed !== undefined) {
+              popup += `速度: ${(props.speed * 3.6).toFixed(1)} km/h<br>`;
+            }
+            if (props.altitude !== undefined) {
+              popup += `高度: ${props.altitude.toFixed(0)} m<br>`;
+            }
+            if (props.battery_level !== undefined) {
+              popup += `バッテリー: ${(props.battery_level * 100).toFixed(0)}%<br>`;
+            }
+            if (props.horizontal_accuracy !== undefined) {
+              popup += `精度: ${props.horizontal_accuracy.toFixed(0)} m`;
+            }
+
+            layer.bindPopup(popup);
+          }
+        }).addTo(map);
+
+        // Fit bounds to show all points
+        map.fitBounds(currentLayer.getBounds(), { padding: [50, 50] });
+
+        setStatus(`${geojson.features.length} 件のデータを表示`);
+      } catch (error) {
+        console.error('Load error:', error);
+        setStatus(`エラー: ${error.message}`, true);
+      } finally {
+        loadBtn.disabled = false;
+      }
+    }
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>
