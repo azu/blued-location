@@ -5,6 +5,8 @@ import { handleGetLocations } from "./handlers/get-locations";
 export type Env = {
   DB: D1Database;
   API_TOKEN: string;
+  NOMINATIM_USER_AGENT?: string;
+  NOMINATIM_EMAIL?: string;
 };
 
 function jsonErrorResponse(error: string, status: number): Response {

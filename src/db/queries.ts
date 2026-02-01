@@ -8,8 +8,8 @@ export async function insertLocations(
     return { count: 0 };
   }
 
-  const stmt = db.prepare("INSERT INTO locations (device_id, geojson) VALUES (?, ?)");
-  const batch = locations.map((loc) => stmt.bind(loc.device_id, loc.geojson));
+  const stmt = db.prepare("INSERT INTO locations (device_id, geojson, address, poi) VALUES (?, ?, ?, ?)");
+  const batch = locations.map((loc) => stmt.bind(loc.device_id, loc.geojson, loc.address ?? null, loc.poi ?? null));
   await db.batch(batch);
 
   return { count: locations.length };
@@ -18,7 +18,7 @@ export async function insertLocations(
 export async function getLocations(
   db: D1Database,
   params: GetLocationsParams
-): Promise<{ id: number; geojson: string }[]> {
+): Promise<{ id: number; geojson: string; address: string | null; poi: string | null }[]> {
   const conditions: string[] = [];
   const bindings: (string | number)[] = [];
 
@@ -47,9 +47,9 @@ export async function getLocations(
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const limit = params.limit ?? 1000;
 
-  const sql = `SELECT id, geojson FROM locations ${where} ORDER BY recorded_at DESC LIMIT ?`;
+  const sql = `SELECT id, geojson, address, poi FROM locations ${where} ORDER BY recorded_at DESC LIMIT ?`;
   bindings.push(limit);
 
-  const result = await db.prepare(sql).bind(...bindings).all<{ id: number; geojson: string }>();
+  const result = await db.prepare(sql).bind(...bindings).all<{ id: number; geojson: string; address: string | null; poi: string | null }>();
   return result.results;
 }

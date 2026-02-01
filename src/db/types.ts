@@ -1,6 +1,8 @@
 export type LocationInsert = {
   device_id: string;
   geojson: string;
+  address?: string | null;
+  poi?: string | null;
 };
 
 export type LocationRow = {
@@ -15,6 +17,8 @@ export type LocationRow = {
   battery: number | null;
   recorded_at: string;
   created_at: string;
+  address: string | null;
+  poi: string | null;
 };
 
 export type GetLocationsParams = {

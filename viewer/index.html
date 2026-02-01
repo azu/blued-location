@@ -272,9 +272,17 @@
             const coords = feature.geometry.coordinates;
 
             let popup = `<b>#${index + 1} ${time}</b><br>`;
+
+            if (props.poi) {
+              popup += `<b>${props.poi}</b><br>`;
+            }
+            if (props.address) {
+              popup += `${props.address}<br>`;
+            }
+
             popup += `座標: ${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}<br>`;
 
-            if (props.speed !== undefined) {
+            if (props.speed !== undefined && props.speed >= 0) {
               popup += `速度: ${(props.speed * 3.6).toFixed(1)} km/h<br>`;
             }
             if (props.altitude !== undefined) {
@@ -288,7 +296,11 @@
             }
 
             layer.bindPopup(popup);
-            layer.bindTooltip(`#${index + 1} ${time}`, {
+
+            const tooltipText = props.poi
+              ? `#${index + 1} ${time} - ${props.poi}`
+              : `#${index + 1} ${time}`;
+            layer.bindTooltip(tooltipText, {
               direction: 'top',
               offset: [0, -8]
             });

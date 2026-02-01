@@ -64,18 +64,28 @@ export async function handleGetLocations(
     const format = query.format ?? "geojson";
 
     if (format === "jsonl") {
-      // JSONL: one Feature per line
-      const lines = rows.map((row) => row.geojson).join("\n");
+      // JSONL: one Feature per line with address/poi injected
+      const lines = rows.map((row) => {
+        const feature = JSON.parse(row.geojson);
+        if (row.address) feature.properties.address = row.address;
+        if (row.poi) feature.properties.poi = row.poi;
+        return JSON.stringify(feature);
+      }).join("\n");
       return jsonResponse(lines, 200, "application/x-ndjson");
     }
 
     if (format === "json") {
-      // Raw array
+      // Raw array with address/poi
       return jsonResponse(rows);
     }
 
-    // Default: GeoJSON FeatureCollection
-    const features = rows.map((row) => JSON.parse(row.geojson));
+    // Default: GeoJSON FeatureCollection with address/poi in properties
+    const features = rows.map((row) => {
+      const feature = JSON.parse(row.geojson);
+      if (row.address) feature.properties.address = row.address;
+      if (row.poi) feature.properties.poi = row.poi;
+      return feature;
+    });
     const featureCollection = {
       type: "FeatureCollection",
       features,

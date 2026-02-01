@@ -5,6 +5,9 @@
 	"assets": {
 		"directory": "./viewer"
 	},
+	"vars": {
+		"NOMINATIM_USER_AGENT": "blued-location/1.0 (https://github.com/azu/blued-location)"
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
