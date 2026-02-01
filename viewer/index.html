@@ -74,6 +74,50 @@
     const STORAGE_KEY = 'blued-location-token';
     let map;
     let currentLayer = null;
+    let currentPolyline = null;
+
+    // 時刻に基づいて色を計算（朝=暖色系、昼=青系、夕=オレンジ系、夜=紫系）
+    function getColorByTime(timestamp) {
+      const date = new Date(timestamp);
+      const hour = date.getHours() + date.getMinutes() / 60;
+
+      // 時刻による色相と明度のマッピング
+      // 0-6時: 夜（暗い紫→朝焼けオレンジへ）
+      // 6-12時: 朝→昼（オレンジ→明るい青へ）
+      // 12-18時: 昼→夕（青→夕焼けオレンジへ）
+      // 18-24時: 夕→夜（オレンジ→暗い紫へ）
+
+      let hue, saturation, lightness;
+
+      if (hour < 6) {
+        // 深夜→早朝: 暗い紫(270)→オレンジ(30)
+        const t = hour / 6;
+        hue = 270 - t * 240; // 270→30 (時計回りで短い方)
+        if (hue < 0) hue += 360;
+        saturation = 60 + t * 20;
+        lightness = 30 + t * 25; // 暗い→明るめ
+      } else if (hour < 12) {
+        // 朝→昼: オレンジ(30)→青(200)
+        const t = (hour - 6) / 6;
+        hue = 30 + t * 170;
+        saturation = 80 - t * 10;
+        lightness = 55 - t * 5; // やや明るめをキープ
+      } else if (hour < 18) {
+        // 昼→夕: 青(200)→オレンジ(30)
+        const t = (hour - 12) / 6;
+        hue = 200 - t * 170;
+        saturation = 70 + t * 15;
+        lightness = 50 + t * 5;
+      } else {
+        // 夕→夜: オレンジ(30)→暗い紫(270)
+        const t = (hour - 18) / 6;
+        hue = 30 + t * 240;
+        saturation = 85 - t * 25;
+        lightness = 55 - t * 25; // 明るめ→暗い
+      }
+
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
 
     function init() {
       // Initialize map centered on Tokyo
@@ -166,9 +210,12 @@
 
         const geojson = await response.json();
 
-        // Remove previous layer
+        // Remove previous layers
         if (currentLayer) {
           map.removeLayer(currentLayer);
+        }
+        if (currentPolyline) {
+          map.removeLayer(currentPolyline);
         }
 
         if (geojson.features.length === 0) {
@@ -176,24 +223,55 @@
           return;
         }
 
-        // Add GeoJSON layer
-        currentLayer = L.geoJSON(geojson, {
+        // Sort features by timestamp
+        const sortedFeatures = [...geojson.features].sort((a, b) => {
+          return new Date(a.properties.timestamp) - new Date(b.properties.timestamp);
+        });
+        const totalPoints = sortedFeatures.length;
+
+        // Create polyline coordinates for the path
+        const polylineCoords = sortedFeatures.map(f => [
+          f.geometry.coordinates[1], // lat
+          f.geometry.coordinates[0]  // lng
+        ]);
+
+        // Add polyline (movement path)
+        currentPolyline = L.polyline(polylineCoords, {
+          color: '#0066cc',
+          weight: 2,
+          opacity: 0.5,
+          dashArray: '5, 5'
+        }).addTo(map);
+
+        // Create a map to store index for each feature
+        const featureIndexMap = new Map();
+        sortedFeatures.forEach((f, index) => {
+          const key = `${f.geometry.coordinates[0]},${f.geometry.coordinates[1]},${f.properties.timestamp}`;
+          featureIndexMap.set(key, index);
+        });
+
+        // Add GeoJSON layer with gradient colors
+        currentLayer = L.geoJSON({ ...geojson, features: sortedFeatures }, {
           pointToLayer: (feature, latlng) => {
+            const color = getColorByTime(feature.properties.timestamp);
+
             return L.circleMarker(latlng, {
               radius: 6,
-              fillColor: '#0066cc',
-              color: '#003366',
-              weight: 1,
+              fillColor: color,
+              color: color,
+              weight: 2,
               opacity: 1,
-              fillOpacity: 0.7
+              fillOpacity: 0.8
             });
           },
           onEachFeature: (feature, layer) => {
             const props = feature.properties;
+            const key = `${feature.geometry.coordinates[0]},${feature.geometry.coordinates[1]},${props.timestamp}`;
+            const index = featureIndexMap.get(key) || 0;
             const time = new Date(props.timestamp).toLocaleTimeString('ja-JP');
             const coords = feature.geometry.coordinates;
 
-            let popup = `<b>${time}</b><br>`;
+            let popup = `<b>#${index + 1} ${time}</b><br>`;
             popup += `座標: ${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}<br>`;
 
             if (props.speed !== undefined) {
