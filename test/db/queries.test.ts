@@ -138,8 +138,11 @@ describe("getLocations", () => {
     });
   });
 
-  it("filters by date", async () => {
-    const rows = await getLocations(env.DB, { date: "2026-02-01" });
+  it("filters by date using from/to", async () => {
+    const rows = await getLocations(env.DB, {
+      from: "2026-02-01T00:00:00Z",
+      to: "2026-02-02T00:00:00Z",
+    });
     expect(rows.length).toBe(3);
     rows.forEach((row) => {
       const geojson = JSON.parse(row.geojson);
@@ -185,7 +188,8 @@ describe("getLocations", () => {
   it("combines multiple filters", async () => {
     const rows = await getLocations(env.DB, {
       device_id: "device-a",
-      date: "2026-02-01",
+      from: "2026-02-01T00:00:00Z",
+      to: "2026-02-02T00:00:00Z",
     });
     expect(rows.length).toBe(2);
   });

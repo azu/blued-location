@@ -27,11 +27,6 @@ export async function getLocations(
     bindings.push(params.device_id);
   }
 
-  if (params.date) {
-    conditions.push("substr(recorded_at, 1, 10) = ?");
-    bindings.push(params.date);
-  }
-
   if (params.from) {
     conditions.push("recorded_at >= ?");
     bindings.push(params.from);

@@ -46,8 +46,8 @@ describe("handleGetLocations", () => {
     expect(json.features.length).toBe(3);
   });
 
-  it("filters by date parameter", async () => {
-    const request = new Request("http://localhost/api/locations?date=2026-02-01");
+  it("filters by from/to parameters", async () => {
+    const request = new Request("http://localhost/api/locations?from=2026-02-01T00:00:00.000Z&to=2026-02-02T00:00:00.000Z");
     const response = await handleGetLocations(request, env);
 
     const json = await response.json();
@@ -102,7 +102,7 @@ describe("handleGetLocations", () => {
   });
 
   it("returns error for invalid query parameters", async () => {
-    const request = new Request("http://localhost/api/locations?date=invalid");
+    const request = new Request("http://localhost/api/locations?from=invalid");
     const response = await handleGetLocations(request, env);
 
     expect(response.status).toBe(400);

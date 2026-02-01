@@ -99,8 +99,8 @@
         }
       }
 
-      // Date priority: URL param > today
-      const today = new Date().toISOString().split('T')[0];
+      // Date priority: URL param > today (local timezone)
+      const today = Temporal.Now.plainDateISO().toString();
       document.getElementById('date').value = urlDate || today;
 
       // Auto-load if token and date are set via URL
@@ -142,7 +142,14 @@
       setStatus('Loading...');
 
       try {
-        const response = await fetch(`/api/locations?date=${date}`, {
+        // Convert local date to from/to using Temporal API
+        const fromPlainDate = Temporal.PlainDate.from(date);
+        const toPlainDate = fromPlainDate.add({ days: 1 });
+        const timeZone = Temporal.Now.timeZoneId();
+        const midnight = Temporal.PlainTime.from('00:00:00');
+        const from = fromPlainDate.toZonedDateTime({ timeZone, plainTime: midnight }).toInstant().toString();
+        const to = toPlainDate.toZonedDateTime({ timeZone, plainTime: midnight }).toInstant().toString();
+        const response = await fetch(`/api/locations?from=${from}&to=${to}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 

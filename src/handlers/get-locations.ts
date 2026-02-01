@@ -46,9 +46,6 @@ export async function handleGetLocations(
   if (query.device_id) {
     params.device_id = query.device_id;
   }
-  if (query.date) {
-    params.date = query.date;
-  }
   if (query.from) {
     params.from = query.from;
   }

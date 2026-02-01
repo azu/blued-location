@@ -1,6 +1,5 @@
 import * as v from "valibot";
 
-const DateString = v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/));
 // JS ISO format: 2026-02-01T10:00:00.000Z (milliseconds and Z required)
 const IsoDateTimeString = v.pipe(v.string(), v.isoTimestamp());
 const BboxString = v.pipe(
@@ -10,7 +9,6 @@ const BboxString = v.pipe(
 const FormatString = v.picklist(["geojson", "json", "jsonl"]);
 
 export const GetLocationsQuery = v.object({
-  date: v.optional(DateString),
   from: v.optional(IsoDateTimeString),
   to: v.optional(IsoDateTimeString),
   bbox: v.optional(BboxString),

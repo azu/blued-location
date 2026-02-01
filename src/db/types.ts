@@ -19,7 +19,6 @@ export type LocationRow = {
 
 export type GetLocationsParams = {
   device_id?: string;
-  date?: string;
   from?: string;
   to?: string;
   bbox?: {
