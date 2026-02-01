@@ -117,7 +117,6 @@ type ErrorResponse = {
 
 | パラメータ | 説明 |
 |-----------|------|
-| `date` | 日付フィルタ (YYYY-MM-DD) |
 | `from` / `to` | 期間フィルタ (ISO 8601) |
 | `bbox` | バウンディングボックス (sw_lon,sw_lat,ne_lon,ne_lat) |
 | `device_id` | デバイスIDフィルタ |
@@ -126,11 +125,11 @@ type ErrorResponse = {
 
 ```bash
 # GeoJSON
-curl "https://your-worker.workers.dev/api/locations?date=2026-02-01" \
+curl "https://your-worker.workers.dev/api/locations?from=2026-02-01T00:00:00+09:00&to=2026-02-02T00:00:00+09:00" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # JSONL (DuckDB互換)
-curl "https://your-worker.workers.dev/api/locations?date=2026-02-01&format=jsonl" \
+curl "https://your-worker.workers.dev/api/locations?from=2026-02-01T00:00:00+09:00&to=2026-02-02T00:00:00+09:00&format=jsonl" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
