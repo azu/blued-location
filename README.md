@@ -27,6 +27,28 @@ pnpm run deploy
 pnpm wrangler d1 migrations apply blued-location-db --remote
 ```
 
+## 環境変数
+
+| 変数名 | 必須 | 説明 |
+|--------|------|------|
+| `API_TOKEN` | YES | API認証用トークン（secret） |
+| `NOMINATIM_USER_AGENT` | NO | リバースジオコーディング用 User-Agent（デフォルト設定済み） |
+| `NOMINATIM_EMAIL` | NO | Nominatim API の連絡先メール（推奨） |
+
+メールアドレスを設定する場合:
+
+```bash
+pnpm wrangler secret put NOMINATIM_EMAIL
+```
+
+## リバースジオコーディング
+
+滞在ポイント（`motion` に `stationary` を含む）に対して、[Nominatim API](https://nominatim.openstreetmap.org/) を使用して住所と POI を自動取得します。
+
+- 50m 以内のポイントをグループ化して API 呼び出し回数を削減
+- Rate Limit 対応（1秒間隔）
+- ビューワーのポップアップに POI・住所を表示
+
 ## Overland 設定
 
 [Overland GPS Tracker](https://apps.apple.com/app/overland-gps-tracker/id1292426766) (iOS) を使用。
