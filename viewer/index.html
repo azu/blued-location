@@ -254,14 +254,15 @@
         currentLayer = L.geoJSON({ ...geojson, features: sortedFeatures }, {
           pointToLayer: (feature, latlng) => {
             const color = getColorByTime(feature.properties.timestamp);
+            const hasPoi = feature.properties.poi || feature.properties.address;
 
             return L.circleMarker(latlng, {
-              radius: 6,
+              radius: hasPoi ? 10 : 6,
               fillColor: color,
-              color: color,
-              weight: 2,
+              color: hasPoi ? '#ffffff' : color,
+              weight: hasPoi ? 3 : 2,
               opacity: 1,
-              fillOpacity: 0.8
+              fillOpacity: hasPoi ? 1 : 0.8
             });
           },
           onEachFeature: (feature, layer) => {
