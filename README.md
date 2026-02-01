@@ -45,9 +45,37 @@ pnpm wrangler secret put NOMINATIM_EMAIL
 
 滞在ポイント（`motion` に `stationary` を含む）に対して、[Nominatim API](https://nominatim.openstreetmap.org/) を使用して住所と POI を自動取得します。
 
+### 取得条件
+
+- `motion` プロパティに `"stationary"` を含むポイントのみが対象
+- 移動中のポイントにはリバースジオコーディングを実行しない
+
+### POI 優先順位
+
+Nominatim の `address` レスポンスから以下の優先順位で POI 名を抽出:
+
+1. `amenity` - 施設（レストラン、カフェ、駅など）
+2. `shop` - 店舗（コンビニ、スーパーなど）
+3. `tourism` - 観光地（ホテル、美術館など）
+4. `building` - 建物名
+
+いずれも存在しない場合は `poi: null` となります。
+
+### 最適化
+
 - 50m 以内のポイントをグループ化して API 呼び出し回数を削減
-- Rate Limit 対応（1秒間隔）
-- ビューワーのポップアップに POI・住所を表示
+- グループ内の代表ポイント1つのみを API に問い合わせ
+- 同じグループ内のすべてのポイントに同一の住所・POI を適用
+
+### Rate Limit
+
+- Nominatim API の利用規約に従い、リクエスト間隔は 1 秒
+- 429 エラー時は `Retry-After` ヘッダーに従って自動リトライ（最大 3 回）
+- 5xx エラー時は指数バックオフでリトライ
+
+### ビューワー表示
+
+- ポップアップに POI 名（存在する場合）と住所を表示
 
 ## Overland 設定
 
@@ -157,13 +185,22 @@ curl "https://your-worker.workers.dev/api/locations?from=2026-02-01T00:00:00+09:
 
 #### レスポンススキーマ
 
-`format` パラメータに応じて異なる形式を返す:
+`format` パラメータに応じて異なる形式を返す。
+
+滞在ポイント（`motion` に `stationary` を含む）には `address` と `poi` が含まれます:
 
 ```typescript
 // format=geojson (デフォルト)
 type GeoJSONResponse = {
   type: "FeatureCollection"
-  features: Feature[]
+  features: FeatureWithAddress[]
+}
+
+type FeatureWithAddress = Feature & {
+  properties: Feature["properties"] & {
+    address?: string   // 住所（例: "東京都渋谷区..."）
+    poi?: string       // POI名（例: "渋谷駅", "セブンイレブン"）
+  }
 }
 
 // format=json
@@ -171,13 +208,33 @@ type JSONResponse = Array<{
   id: number
   device_id: string
   timestamp: string
-  geojson: Feature
+  geojson: string
+  address: string | null   // 住所
+  poi: string | null       // POI名
 }>
 
 // format=jsonl
-// NDJSON形式（1行1Feature）
-// {"type":"Feature","geometry":{...},"properties":{...}}
-// {"type":"Feature","geometry":{...},"properties":{...}}
+// NDJSON形式（1行1Feature、properties に address/poi 含む）
+// {"type":"Feature","geometry":{...},"properties":{...,"address":"東京都...","poi":"渋谷駅"}}
+```
+
+#### address / poi の例
+
+```json
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [139.7006, 35.6580]
+  },
+  "properties": {
+    "timestamp": "2026-02-01T10:00:00Z",
+    "device_id": "iphone",
+    "motion": ["stationary"],
+    "address": "日本, 東京都, 渋谷区, 道玄坂, 2丁目, 1, 150-0043",
+    "poi": "渋谷駅"
+  }
+}
 ```
 
 ## Viewer
