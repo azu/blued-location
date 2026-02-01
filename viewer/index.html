@@ -288,6 +288,10 @@
             }
 
             layer.bindPopup(popup);
+            layer.bindTooltip(`#${index + 1} ${time}`, {
+              direction: 'top',
+              offset: [0, -8]
+            });
           }
         }).addTo(map);
 
