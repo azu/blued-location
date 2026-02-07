@@ -1,5 +1,5 @@
 {
-	"name": "chronixd-location",
+	"name": "blued-location",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-01-28",
 	"assets": {
